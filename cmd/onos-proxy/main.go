@@ -17,7 +17,6 @@ package main
 import (
 	"fmt"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"runtime"
 )
 
