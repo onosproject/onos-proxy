@@ -17,6 +17,10 @@ package main
 import (
 	"fmt"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
+	"github.com/onosproject/onos-proxy/pkg/manager"
+	"syscall"
+	"os"
+	"os/signal"
 	"runtime"
 )
 
@@ -30,4 +34,17 @@ func printVersion() {
 func main() {
 	//logf.SetLogger(zap.New())
 	printVersion()
+
+	log.Info("Starting onos-proxy")
+	cfg := manager.Config{
+		GRPCPort:            5150,
+	}
+	mgr := manager.NewManager(cfg)
+	mgr.Run()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	<-sigCh
+
+	mgr.Close()
 }
