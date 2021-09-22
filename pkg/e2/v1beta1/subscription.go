@@ -35,57 +35,58 @@ type SubscriptionService struct {
 func (s SubscriptionService) Register(r *grpc.Server) {
 	server := &SubscriptionServer{}
 	e2api.RegisterSubscriptionServiceServer(r, server)
-	e2api.RegisterSubscriptionAdminServiceServer(r, server)
 }
 
 // SubscriptionServer implements the gRPC service for E2 Subscription related functions.
 type SubscriptionServer struct {
 }
 
-func (s *SubscriptionServer) GetChannel(ctx context.Context, request *e2api.GetChannelRequest) (*e2api.GetChannelResponse, error) {
-	log.Debugf("Received GetChannelRequest %+v", request)
-	log.Errorf("TODO: Not implemented yet")
-	return nil, nil
-}
-
-func (s *SubscriptionServer) ListChannels(ctx context.Context, request *e2api.ListChannelsRequest) (*e2api.ListChannelsResponse, error) {
-	log.Debugf("Received ListChannelsRequest %+v", request)
-	log.Errorf("TODO: Not implemented yet")
-	return nil, nil
-}
-
-func (s *SubscriptionServer) WatchChannels(request *e2api.WatchChannelsRequest, server e2api.SubscriptionAdminService_WatchChannelsServer) error {
-	log.Debugf("Received WatchChannelsRequest %+v", request)
-	log.Errorf("TODO: Not implemented yet")
-	return nil
-}
-
-func (s *SubscriptionServer) GetSubscription(ctx context.Context, request *e2api.GetSubscriptionRequest) (*e2api.GetSubscriptionResponse, error) {
-	log.Debugf("Received GetSubscriptionRequest %+v", request)
-	log.Errorf("TODO: Not implemented yet")
-	return nil, nil
-}
-
-func (s *SubscriptionServer) ListSubscriptions(ctx context.Context, request *e2api.ListSubscriptionsRequest) (*e2api.ListSubscriptionsResponse, error) {
-	log.Debugf("Received ListSubscriptionsRequest %+v", request)
-	log.Errorf("TODO: Not implemented yet")
-	return nil, nil
-}
-
-func (s *SubscriptionServer) WatchSubscriptions(request *e2api.WatchSubscriptionsRequest, server e2api.SubscriptionAdminService_WatchSubscriptionsServer) error {
-	log.Debugf("Received WatchSubscriptionsRequest %+v", request)
-	log.Errorf("TODO: Not implemented yet")
-	return nil
-}
-
 func (s *SubscriptionServer) Subscribe(request *e2api.SubscribeRequest, server e2api.SubscriptionService_SubscribeServer) error {
 	log.Debugf("Received SubscribeRequest %+v", request)
-	log.Errorf("TODO: Not implemented yet")
-	return nil
+
+	conn, err := grpc.Dial("onos-e2t:5150", grpc.WithInsecure())
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	client := e2api.NewSubscriptionServiceClient(conn)
+	clientStream, err := client.Subscribe(server.Context(), request)
+	if err != nil {
+		return err
+	}
+
+	for {
+		response, err := clientStream.Recv()
+		if err != nil {
+			return err
+		}
+		err = server.Send(response)
+		if err != nil {
+			return err
+		}
+	}
 }
 
 func (s *SubscriptionServer) Unsubscribe(ctx context.Context, request *e2api.UnsubscribeRequest) (*e2api.UnsubscribeResponse, error) {
 	log.Debugf("Received UnsubscribeRequest %+v", request)
-	log.Errorf("TODO: Not implemented yet")
-	return nil, nil
+	conn, err := grpc.Dial("onos-e2t:5150", grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	client := e2api.NewSubscriptionServiceClient(conn)
+	return client.Unsubscribe(ctx, request)
 }
+
+
+/*
+	e2client := NewClient(WithAppID(AppID(request.Headers.AppID)),
+						WithServiceModel(ServiceModelName(request.Headers.ServiceModel.Name),
+										 ServiceModelVersion(request.Headers.ServiceModel.Version)))
+	node := e2client.Node(NodeID(request.Headers.E2NodeID))
+
+	node.Subscribe(request.Subscription, ch)
+}
+ */
