@@ -17,9 +17,12 @@ package v1beta1
 import (
 	"context"
 	e2api "github.com/onosproject/onos-api/go/onos/e2t/e2/v1beta1"
+	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-lib-go/pkg/northbound"
 	"google.golang.org/grpc"
 )
+
+var log = logging.GetLogger("e2", "v1beta1")
 
 // NewSubscriptionService creates a new E2T subscription service
 func NewSubscriptionService() northbound.Service {
@@ -39,18 +42,19 @@ func (s SubscriptionService) Register(r *grpc.Server) {
 
 // SubscriptionServer implements the gRPC service for E2 Subscription related functions.
 type SubscriptionServer struct {
+	conn	*grpc.ClientConn
 }
 
 func (s *SubscriptionServer) Subscribe(request *e2api.SubscribeRequest, server e2api.SubscriptionService_SubscribeServer) error {
 	log.Debugf("Received SubscribeRequest %+v", request)
+	var err error
 
-	conn, err := grpc.Dial("onos-e2t:5150", grpc.WithInsecure())
+	s.conn, err = grpc.Dial("onos-e2t:5150", grpc.WithInsecure())
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
 
-	client := e2api.NewSubscriptionServiceClient(conn)
+	client := e2api.NewSubscriptionServiceClient(s.conn)
 	clientStream, err := client.Subscribe(server.Context(), request)
 	if err != nil {
 		return err
@@ -70,23 +74,13 @@ func (s *SubscriptionServer) Subscribe(request *e2api.SubscribeRequest, server e
 
 func (s *SubscriptionServer) Unsubscribe(ctx context.Context, request *e2api.UnsubscribeRequest) (*e2api.UnsubscribeResponse, error) {
 	log.Debugf("Received UnsubscribeRequest %+v", request)
-	conn, err := grpc.Dial("onos-e2t:5150", grpc.WithInsecure())
+	var err error
+
+	s.conn, err = grpc.Dial("onos-e2t:5150", grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 
-	client := e2api.NewSubscriptionServiceClient(conn)
+	client := e2api.NewSubscriptionServiceClient(s.conn)
 	return client.Unsubscribe(ctx, request)
 }
-
-
-/*
-	e2client := NewClient(WithAppID(AppID(request.Headers.AppID)),
-						WithServiceModel(ServiceModelName(request.Headers.ServiceModel.Name),
-										 ServiceModelVersion(request.Headers.ServiceModel.Version)))
-	node := e2client.Node(NodeID(request.Headers.E2NodeID))
-
-	node.Subscribe(request.Subscription, ch)
-}
- */

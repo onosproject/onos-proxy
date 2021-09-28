@@ -59,9 +59,18 @@ func (m *Manager) Start() error {
 	return nil
 }
 
+var none = ""
+
 // startSouthboundServer starts the northbound gRPC server
 func (m *Manager) startNorthboundServer() error {
-	s := northbound.NewServer(&northbound.ServerConfig{Port: int16(m.Config.GRPCPort)})
+	s := northbound.NewServer(&northbound.ServerConfig{
+		CaPath:      &none,
+		KeyPath:     &none,
+		CertPath:    &none,
+		Port:        int16(m.Config.GRPCPort),
+		Insecure:    true,
+		SecurityCfg: &northbound.SecurityConfig{AuthenticationEnabled: false},
+	})
 	s.AddService(logging.Service{})
 	s.AddService(e2v1beta1service.NewControlService())
 	s.AddService(e2v1beta1service.NewSubscriptionService())

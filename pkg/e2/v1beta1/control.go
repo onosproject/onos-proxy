@@ -47,7 +47,6 @@ func (s *ControlServer) Control(ctx context.Context, request *e2api.ControlReque
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 
 	client := e2api.NewControlServiceClient(conn)
 	return client.Control(ctx, request)

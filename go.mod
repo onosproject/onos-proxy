@@ -7,7 +7,7 @@ require (
 	github.com/atomix/atomix-go-framework v0.7.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/golang/snappy v0.0.2 // indirect
-	github.com/google/uuid v1.1.2
+	github.com/google/uuid v1.1.2 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20200217142428-fce0ec30dd00 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0 // indirect
 	github.com/klauspost/compress v1.11.3 // indirect

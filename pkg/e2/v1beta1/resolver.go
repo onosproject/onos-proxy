@@ -27,18 +27,10 @@ import (
 )
 
 const resolverName = "e2"
-
-func newResolver(nodeID NodeID, opts Options) resolver.Builder {
-	return &ResolverBuilder{
-		nodeID: nodeID,
-		opts:   opts,
-	}
-}
+const topoAddress = "onos-topo:5150"
 
 // ResolverBuilder :
 type ResolverBuilder struct {
-	nodeID NodeID
-	opts   Options
 }
 
 // Scheme :
@@ -61,7 +53,7 @@ func (b *ResolverBuilder) Build(target resolver.Target, cc resolver.ClientConn, 
 	dialOpts = append(dialOpts, grpc.WithStreamInterceptor(retry.RetryingStreamClientInterceptor(retry.WithRetryOn(codes.Unavailable, codes.Unknown))))
 	dialOpts = append(dialOpts, grpc.WithContextDialer(opts.Dialer))
 
-	resolverConn, err := grpc.Dial(b.opts.Topo.GetAddress(), dialOpts...)
+	topoConn, err := grpc.Dial(topoAddress, dialOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -71,12 +63,12 @@ func (b *ResolverBuilder) Build(target resolver.Target, cc resolver.ClientConn, 
 	)
 
 	resolver := &Resolver{
-		nodeID:        b.nodeID,
 		clientConn:    cc,
-		resolverConn:  resolverConn,
+		topoConn:      topoConn,
 		serviceConfig: serviceConfig,
-		nodes:         make(map[topo.ID]topo.ID),
-		addresses:     make(map[topo.ID]string),
+		nodes:   	   make(map[topo.ID]*topo.MastershipState),
+		controls:	   make(map[topo.ID]topo.ID),
+		e2ts:     	   make(map[topo.ID]string),
 	}
 	err = resolver.start()
 	if err != nil {
@@ -89,17 +81,16 @@ var _ resolver.Builder = (*ResolverBuilder)(nil)
 
 // Resolver :
 type Resolver struct {
-	nodeID        NodeID
 	clientConn    resolver.ClientConn
-	resolverConn  *grpc.ClientConn
+	topoConn      *grpc.ClientConn
 	serviceConfig *serviceconfig.ParseResult
-	mastership    *topo.MastershipState
-	nodes         map[topo.ID]topo.ID
-	addresses     map[topo.ID]string
+	nodes     	  map[topo.ID]*topo.MastershipState  	// E2 node to mastership (controls relation ID)
+	controls      map[topo.ID]topo.ID					// controls relation to E2T ID
+	e2ts          map[topo.ID]string				  	// E2T ID to address
 }
 
 func (r *Resolver) start() error {
-	client := topo.NewTopoClient(r.resolverConn)
+	client := topo.NewTopoClient(r.topoConn)
 	request := &topo.WatchRequest{}
 	stream, err := client.Watch(context.Background(), request)
 	if err != nil {
@@ -119,81 +110,86 @@ func (r *Resolver) start() error {
 
 func (r *Resolver) handleEvent(event topo.Event) {
 	object := event.Object
-	if entity, ok := object.Obj.(*topo.Object_Entity); ok &&
-		entity.Entity.KindID == topo.E2NODE &&
-		object.ID == topo.ID(r.nodeID) {
-		var m topo.MastershipState
-		_ = object.GetAspect(&m)
-		if m.NodeId != "" && (r.mastership == nil || m.Term > r.mastership.Term) {
-			r.mastership = &m
-			r.updateState()
-		}
-	} else if entity, ok := object.Obj.(*topo.Object_Entity); ok &&
-		entity.Entity.KindID == topo.E2T {
+	if entity, ok := object.Obj.(*topo.Object_Entity); ok && entity.Entity.KindID == topo.E2NODE {
+		// Track changes in E2 nodes
 		switch event.Type {
 		case topo.EventType_REMOVED:
-			delete(r.addresses, object.ID)
+			delete(r.nodes, object.ID)
+		default:
+			var m topo.MastershipState
+			_ = object.GetAspect(&m)
+			if node, ok := r.nodes[object.ID]; !ok || m.Term > node.Term {
+				r.nodes[object.ID] = &m
+			}
+		}
+		r.updateState()
+
+	} else if entity, ok := object.Obj.(*topo.Object_Entity); ok && entity.Entity.KindID == topo.E2T {
+		// Track changes in E2T instances
+		switch event.Type {
+		case topo.EventType_REMOVED:
+			delete(r.e2ts, object.ID)
 		default:
 			var info topo.E2TInfo
 			_ = object.GetAspect(&info)
 			for _, iface := range info.Interfaces {
 				if iface.Type == topo.Interface_INTERFACE_E2T {
-					r.addresses[object.ID] = fmt.Sprintf("%s:%d", iface.IP, iface.Port)
+					r.e2ts[object.ID] = fmt.Sprintf("%s:%d", iface.IP, iface.Port)
 				}
 			}
 		}
 		r.updateState()
-	} else if relation, ok := object.Obj.(*topo.Object_Relation); ok &&
-		relation.Relation.KindID == topo.CONTROLS &&
-		relation.Relation.TgtEntityID == topo.ID(r.nodeID) {
+
+	} else if relation, ok := object.Obj.(*topo.Object_Relation); ok && relation.Relation.KindID == topo.CONTROLS {
+		// Track changes in E2T/E2Node controls relations
 		switch event.Type {
 		case topo.EventType_REMOVED:
-			delete(r.nodes, object.ID)
+			delete(r.controls, object.ID)
 		default:
-			r.nodes[object.ID] = relation.Relation.SrcEntityID
+			r.controls[object.ID] = relation.Relation.SrcEntityID
 		}
 		r.updateState()
 	}
 }
 
 func (r *Resolver) updateState() {
-	if r.mastership == nil {
-		return
-	}
+	// Produce list of addresses for available E2T instances
+	// Annotate each address with a list of nodes for which this instances is presently the master
+	e2tMastership := make(map[topo.ID][]string)
 
-	master, ok := r.nodes[topo.ID(r.mastership.NodeId)]
-	if !ok {
-		return
-	}
-
-	address, ok := r.addresses[master]
-	if !ok {
-		return
-	}
-
-	var addrs []resolver.Address
-	addrs = append(addrs, resolver.Address{
-		Addr: address,
-		Attributes: attributes.New(
-			"is_master",
-			true,
-		),
-	})
-
-	for nodeID, address := range r.addresses {
-		if nodeID != master {
-			addrs = append(addrs, resolver.Address{
-				Addr: address,
-				Attributes: attributes.New(
-					"is_master",
-					false,
-				),
-			})
+	// Scan over all nodes and insert their ID into the list of nodes of its master E2T instance
+	for nodeID, mastership := range r.nodes {
+		if e2tID, ok := r.controls[topo.ID(mastership.NodeId)]; ok {
+			var nodes []string
+			if nodes, ok = e2tMastership[e2tID]; !ok {
+				nodes = make([]string, 0)
+			}
+			e2tMastership[e2tID] = append(nodes, string(nodeID))
 		}
 	}
 
+	// Transpose the map of E2T node IDs into a list of addresses with nodes attribute
+	addresses := make([]resolver.Address, 0, len(r.e2ts))
+	for e2tID, addr := range r.e2ts {
+		var nodes []string
+		var ok bool
+		if nodes, ok = e2tMastership[e2tID]; !ok {
+			nodes = make([]string, 0)
+		}
+		addresses = append(addresses, resolver.Address{
+			Addr: addr,
+			Attributes: attributes.New(
+				"nodes",
+				nodes,
+			),
+		})
+	}
+
+	log.Infof("New resolver addresses: %v", addresses)
+
+	// Update the resolver state with list of E2T addresses annotated by nodes for which they are masters
 	r.clientConn.UpdateState(resolver.State{
-		Addresses:     addrs,
+		Addresses:     addresses,
 		ServiceConfig: r.serviceConfig,
 	})
 }
@@ -203,7 +199,7 @@ func (r *Resolver) ResolveNow(resolver.ResolveNowOptions) {}
 
 // Close :
 func (r *Resolver) Close() {
-	if err := r.resolverConn.Close(); err != nil {
+	if err := r.topoConn.Close(); err != nil {
 		log.Error("failed to close conn", err)
 	}
 }
