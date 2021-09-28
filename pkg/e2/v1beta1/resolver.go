@@ -62,6 +62,8 @@ func (b *ResolverBuilder) Build(target resolver.Target, cc resolver.ClientConn, 
 		fmt.Sprintf(`{"loadBalancingConfig":[{"%s":{}}]}`, resolverName),
 	)
 
+	log.Infof("Built new resolver")
+
 	resolver := &Resolver{
 		clientConn:    cc,
 		topoConn:      topoConn,
@@ -90,6 +92,8 @@ type Resolver struct {
 }
 
 func (r *Resolver) start() error {
+	log.Infof("Starting resolver")
+
 	client := topo.NewTopoClient(r.topoConn)
 	request := &topo.WatchRequest{}
 	stream, err := client.Watch(context.Background(), request)

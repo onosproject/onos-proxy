@@ -18,10 +18,10 @@ import (
 	"fmt"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-proxy/pkg/manager"
-	"syscall"
 	"os"
 	"os/signal"
 	"runtime"
+	"syscall"
 )
 
 var log = logging.GetLogger("onos", "proxy")
@@ -37,7 +37,7 @@ func main() {
 
 	log.Info("Starting onos-proxy")
 	cfg := manager.Config{
-		GRPCPort:            5150,
+		GRPCPort:	5151,
 	}
 	mgr := manager.NewManager(cfg)
 	mgr.Run()

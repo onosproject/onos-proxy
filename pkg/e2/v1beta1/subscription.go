@@ -16,10 +16,14 @@ package v1beta1
 
 import (
 	"context"
+	"fmt"
 	e2api "github.com/onosproject/onos-api/go/onos/e2t/e2/v1beta1"
+	"github.com/onosproject/onos-lib-go/pkg/grpc/retry"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-lib-go/pkg/northbound"
+	"github.com/onosproject/onos-proxy/pkg/utils/creds"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 var log = logging.GetLogger("e2", "v1beta1")
@@ -42,14 +46,26 @@ func (s SubscriptionService) Register(r *grpc.Server) {
 
 // SubscriptionServer implements the gRPC service for E2 Subscription related functions.
 type SubscriptionServer struct {
-	conn	*grpc.ClientConn
+	conn *grpc.ClientConn
+}
+
+func (s *SubscriptionServer) connect(ctx context.Context) (*grpc.ClientConn, error) {
+	clientCreds, _ := creds.GetClientCredentials()
+	conn, err := grpc.DialContext(ctx, fmt.Sprintf("%s:///%s", resolverName, "onos-e2t:5150"),
+		grpc.WithTransportCredentials(credentials.NewTLS(clientCreds)),
+		grpc.WithUnaryInterceptor(retry.RetryingUnaryClientInterceptor()),
+		grpc.WithStreamInterceptor(retry.RetryingStreamClientInterceptor()))
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
 }
 
 func (s *SubscriptionServer) Subscribe(request *e2api.SubscribeRequest, server e2api.SubscriptionService_SubscribeServer) error {
 	log.Debugf("Received SubscribeRequest %+v", request)
 	var err error
 
-	s.conn, err = grpc.Dial("onos-e2t:5150", grpc.WithInsecure())
+	s.conn, err = s.connect(server.Context())
 	if err != nil {
 		return err
 	}
@@ -76,7 +92,7 @@ func (s *SubscriptionServer) Unsubscribe(ctx context.Context, request *e2api.Uns
 	log.Debugf("Received UnsubscribeRequest %+v", request)
 	var err error
 
-	s.conn, err = grpc.Dial("onos-e2t:5150", grpc.WithInsecure())
+	s.conn, err = s.connect(ctx)
 	if err != nil {
 		return nil, err
 	}
