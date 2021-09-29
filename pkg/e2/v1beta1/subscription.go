@@ -30,6 +30,7 @@ var log = logging.GetLogger("e2", "v1beta1")
 
 // NewSubscriptionService creates a new E2T subscription service
 func NewSubscriptionService() northbound.Service {
+	log.Info("Creating subscription service")
 	return &SubscriptionService{}
 }
 
@@ -62,7 +63,7 @@ func (s *SubscriptionServer) connect(ctx context.Context) (*grpc.ClientConn, err
 }
 
 func (s *SubscriptionServer) Subscribe(request *e2api.SubscribeRequest, server e2api.SubscriptionService_SubscribeServer) error {
-	log.Debugf("Received SubscribeRequest %+v", request)
+	log.Infof("Received SubscribeRequest %+v", request)
 	var err error
 
 	s.conn, err = s.connect(server.Context())
@@ -89,7 +90,7 @@ func (s *SubscriptionServer) Subscribe(request *e2api.SubscribeRequest, server e
 }
 
 func (s *SubscriptionServer) Unsubscribe(ctx context.Context, request *e2api.UnsubscribeRequest) (*e2api.UnsubscribeResponse, error) {
-	log.Debugf("Received UnsubscribeRequest %+v", request)
+	log.Infof("Received UnsubscribeRequest %+v", request)
 	var err error
 
 	s.conn, err = s.connect(ctx)

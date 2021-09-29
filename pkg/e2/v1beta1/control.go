@@ -27,6 +27,7 @@ import (
 
 // NewControlService creates a new control service
 func NewControlService() northbound.Service {
+	log.Info("Creating control service")
 	return &ControlService{}
 }
 
@@ -58,7 +59,7 @@ func (s *ControlServer) connect(ctx context.Context) (*grpc.ClientConn, error) {
 }
 
 func (s *ControlServer) Control(ctx context.Context, request *e2api.ControlRequest) (*e2api.ControlResponse, error) {
-	log.Infof("Received E2 Control Request %v", request)
+	log.Infof("Received E2 Control Request %+v", request)
 	conn, err := s.connect(ctx)
 	if err != nil {
 		return nil, err
