@@ -24,10 +24,10 @@ var log = logging.GetLogger("manager")
 
 // Config is a manager configuration
 type Config struct {
-	CAPath       string
-	KeyPath      string
-	CertPath     string
-	GRPCPort     int
+	CAPath   string
+	KeyPath  string
+	CertPath string
+	GRPCPort int
 }
 
 // NewManager creates a new manager
