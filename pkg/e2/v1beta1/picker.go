@@ -21,7 +21,7 @@ import (
 	"google.golang.org/grpc/resolver"
 )
 
-const e2NodeIDHeader = "E2-Node-ID"
+const e2NodeIDHeader = "e2-node-id"
 
 func init() {
 	balancer.Register(base.NewBalancerBuilder(resolverName, &PickerBuilder{}, base.Config{}))
@@ -41,7 +41,7 @@ func (p *PickerBuilder) Build(info base.PickerBuildInfo) balancer.Picker {
 			masters[node] = sc
 		}
 	}
-	log.Infof("Built new picker. Masters: %v", masters)
+	log.Infof("Built new picker for E2T instances: %+v", masters)
 	return &Picker{
 		masters: masters,
 	}
@@ -57,15 +57,17 @@ type Picker struct {
 // Pick :
 func (p *Picker) Pick(info balancer.PickInfo) (balancer.PickResult, error) {
 	var result balancer.PickResult
-	if md, ok := metadata.FromIncomingContext(info.Ctx); !ok {
+	if md, ok := metadata.FromIncomingContext(info.Ctx); ok {
 		ids := md.Get(e2NodeIDHeader)
 		if len(ids) > 0 {
 			if subConn, ok := p.masters[ids[0]]; ok {
+				log.Infof("Picked subconn for %s: %+v", ids[0], subConn)
 				result.SubConn = subConn
 				return result, nil
 			}
 		}
 	}
+	log.Warn("No subconn available")
 	return result, balancer.ErrNoSubConnAvailable
 }
 

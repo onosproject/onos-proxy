@@ -27,7 +27,6 @@ import (
 
 // NewControlService creates a new control service
 func NewControlService() northbound.Service {
-	log.Info("Creating control service")
 	return &ControlService{}
 }
 

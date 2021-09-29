@@ -30,7 +30,6 @@ var log = logging.GetLogger("e2", "v1beta1")
 
 // NewSubscriptionService creates a new E2T subscription service
 func NewSubscriptionService() northbound.Service {
-	log.Info("Creating subscription service")
 	return &SubscriptionService{}
 }
 

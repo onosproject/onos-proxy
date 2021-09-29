@@ -24,9 +24,10 @@ var log = logging.GetLogger("manager")
 
 // Config is a manager configuration
 type Config struct {
-	GRPCPort    int
-	E2Port      int
-	TopoAddress string
+	CAPath       string
+	KeyPath      string
+	CertPath     string
+	GRPCPort     int
 }
 
 // NewManager creates a new manager
@@ -59,17 +60,15 @@ func (m *Manager) Start() error {
 	return nil
 }
 
-var none = ""
-
 // startSouthboundServer starts the northbound gRPC server
 func (m *Manager) startNorthboundServer() error {
 	s := northbound.NewServer(&northbound.ServerConfig{
-		CaPath:      &none,
-		KeyPath:     &none,
-		CertPath:    &none,
+		CaPath:      &m.Config.CAPath,
+		KeyPath:     &m.Config.KeyPath,
+		CertPath:    &m.Config.CertPath,
 		Port:        int16(m.Config.GRPCPort),
 		Insecure:    true,
-		SecurityCfg: &northbound.SecurityConfig{AuthenticationEnabled: false},
+		SecurityCfg: &northbound.SecurityConfig{},
 	})
 	s.AddService(logging.Service{})
 	s.AddService(e2v1beta1service.NewControlService())

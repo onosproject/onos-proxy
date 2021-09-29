@@ -187,9 +187,10 @@ func (r *Resolver) updateState() {
 				nodes,
 			),
 		})
+		log.Infof("New resolver address: %s => %+v", addr, nodes)
 	}
 
-	log.Infof("New resolver addresses: %v", addresses)
+	log.Infof("New resolver addresses: %+v", addresses)
 
 	// Update the resolver state with list of E2T addresses annotated by nodes for which they are masters
 	r.clientConn.UpdateState(resolver.State{
