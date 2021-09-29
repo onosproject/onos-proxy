@@ -133,16 +133,21 @@ func (r *Resolver) handleEvent(event topo.Event) {
 		switch event.Type {
 		case topo.EventType_REMOVED:
 			delete(r.e2ts, object.ID)
+			r.updateState()
 		default:
 			var info topo.E2TInfo
 			_ = object.GetAspect(&info)
+			newAddress := r.e2ts[object.ID]
 			for _, iface := range info.Interfaces {
 				if iface.Type == topo.Interface_INTERFACE_E2T {
-					r.e2ts[object.ID] = fmt.Sprintf("%s:%d", iface.IP, iface.Port)
+					newAddress = fmt.Sprintf("%s:%d", iface.IP, iface.Port)
 				}
 			}
+			if r.e2ts[object.ID] != newAddress {
+				r.e2ts[object.ID] = newAddress
+				r.updateState()
+			}
 		}
-		r.updateState()
 
 	} else if relation, ok := object.Obj.(*topo.Object_Relation); ok && relation.Relation.KindID == topo.CONTROLS {
 		// Track changes in E2T/E2Node controls relations
