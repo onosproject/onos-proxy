@@ -16,13 +16,14 @@ package v1beta1
 
 import (
 	"context"
+	"fmt"
 	e2api "github.com/onosproject/onos-api/go/onos/e2t/e2/v1beta1"
-	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-lib-go/pkg/northbound"
+	"github.com/onosproject/onos-lib-go/pkg/grpc/retry"
+	"github.com/onosproject/onos-proxy/pkg/utils/creds"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
-
-var log = logging.GetLogger("northbound", "e2", "v1beta1")
 
 // NewControlService creates a new control service
 func NewControlService() northbound.Service {
@@ -44,8 +45,25 @@ func (s ControlService) Register(r *grpc.Server) {
 type ControlServer struct {
 }
 
+func (s *ControlServer) connect(ctx context.Context) (*grpc.ClientConn, error) {
+	clientCreds, _ := creds.GetClientCredentials()
+	conn, err := grpc.DialContext(ctx, fmt.Sprintf("%s:///%s", resolverName, "onos-e2t:5150"),
+		grpc.WithTransportCredentials(credentials.NewTLS(clientCreds)),
+		grpc.WithUnaryInterceptor(retry.RetryingUnaryClientInterceptor()),
+		grpc.WithStreamInterceptor(retry.RetryingStreamClientInterceptor()))
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
+}
+
 func (s *ControlServer) Control(ctx context.Context, request *e2api.ControlRequest) (*e2api.ControlResponse, error) {
-	log.Infof("Received E2 Control Request %v", request)
-	log.Errorf("TODO: Not implemented yet")
-	return nil, nil
+	log.Infof("Received E2 Control Request %+v", request)
+	conn, err := s.connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	client := e2api.NewControlServiceClient(conn)
+	return client.Control(ctx, request)
 }

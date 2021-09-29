@@ -15,9 +15,14 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
+	"github.com/onosproject/onos-proxy/pkg/manager"
+	"os"
+	"os/signal"
 	"runtime"
+	"syscall"
 )
 
 var log = logging.GetLogger("onos", "proxy")
@@ -28,6 +33,26 @@ func printVersion() {
 }
 
 func main() {
+	caPath := flag.String("caPath", "", "path to CA certificate")
+	keyPath := flag.String("keyPath", "", "path to client private key")
+	certPath := flag.String("certPath", "", "path to client certificate")
+
 	//logf.SetLogger(zap.New())
 	printVersion()
+
+	log.Info("Starting onos-proxy")
+	cfg := manager.Config{
+		CAPath:       *caPath,
+		KeyPath:      *keyPath,
+		CertPath:     *certPath,
+		GRPCPort:     5151,
+	}
+	mgr := manager.NewManager(cfg)
+	mgr.Run()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	<-sigCh
+
+	mgr.Close()
 }

@@ -12,10 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package e2t
+package creds
 
-import "testing"
+import (
+	"crypto/tls"
+	"github.com/onosproject/onos-lib-go/pkg/certs"
+)
 
-func TestDummy(t *testing.T) {
-	t.Log("Yo!")
+// GetClientCredentials :
+func GetClientCredentials() (*tls.Config, error) {
+	cert, err := tls.X509KeyPair([]byte(certs.DefaultClientCrt), []byte(certs.DefaultClientKey))
+	if err != nil {
+		return nil, err
+	}
+	return &tls.Config{
+		Certificates:       []tls.Certificate{cert},
+		InsecureSkipVerify: true,
+	}, nil
 }
