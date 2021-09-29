@@ -51,7 +51,7 @@ var _ base.PickerBuilder = (*PickerBuilder)(nil)
 
 // Picker :
 type Picker struct {
-	masters map[string]balancer.SubConn		// NodeID string to connection mapping
+	masters map[string]balancer.SubConn // NodeID string to connection mapping
 }
 
 // Pick :

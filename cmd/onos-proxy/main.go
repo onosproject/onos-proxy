@@ -42,10 +42,10 @@ func main() {
 
 	log.Info("Starting onos-proxy")
 	cfg := manager.Config{
-		CAPath:       *caPath,
-		KeyPath:      *keyPath,
-		CertPath:     *certPath,
-		GRPCPort:     5151,
+		CAPath:   *caPath,
+		KeyPath:  *keyPath,
+		CertPath: *certPath,
+		GRPCPort: 5151,
 	}
 	mgr := manager.NewManager(cfg)
 	mgr.Run()

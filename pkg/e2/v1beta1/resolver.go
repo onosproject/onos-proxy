@@ -68,9 +68,9 @@ func (b *ResolverBuilder) Build(target resolver.Target, cc resolver.ClientConn, 
 		clientConn:    cc,
 		topoConn:      topoConn,
 		serviceConfig: serviceConfig,
-		nodes:   	   make(map[topo.ID]*topo.MastershipState),
-		controls:	   make(map[topo.ID]topo.ID),
-		e2ts:     	   make(map[topo.ID]string),
+		nodes:         make(map[topo.ID]*topo.MastershipState),
+		controls:      make(map[topo.ID]topo.ID),
+		e2ts:          make(map[topo.ID]string),
 	}
 	err = resolver.start()
 	if err != nil {
@@ -86,9 +86,9 @@ type Resolver struct {
 	clientConn    resolver.ClientConn
 	topoConn      *grpc.ClientConn
 	serviceConfig *serviceconfig.ParseResult
-	nodes     	  map[topo.ID]*topo.MastershipState  	// E2 node to mastership (controls relation ID)
-	controls      map[topo.ID]topo.ID					// controls relation to E2T ID
-	e2ts          map[topo.ID]string				  	// E2T ID to address
+	nodes         map[topo.ID]*topo.MastershipState // E2 node to mastership (controls relation ID)
+	controls      map[topo.ID]topo.ID               // controls relation to E2T ID
+	e2ts          map[topo.ID]string                // E2T ID to address
 }
 
 func (r *Resolver) start() error {
