@@ -24,7 +24,7 @@ import (
 const e2NodeIDHeader = "e2-node-id"
 
 func init() {
-	balancer.Register(base.NewBalancerBuilder(resolverName, &PickerBuilder{}, base.Config{}))
+	balancer.Register(base.NewBalancerBuilder(ResolverName, &PickerBuilder{}, base.Config{}))
 	resolver.Register(&ResolverBuilder{})
 }
 
