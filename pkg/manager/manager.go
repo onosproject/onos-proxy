@@ -71,8 +71,7 @@ func (m *Manager) startNorthboundServer() error {
 		SecurityCfg: &northbound.SecurityConfig{},
 	})
 	s.AddService(logging.Service{})
-	s.AddService(e2v1beta1service.NewControlService())
-	s.AddService(e2v1beta1service.NewSubscriptionService())
+	s.AddService(e2v1beta1service.NewProxyService())
 
 	doneCh := make(chan error)
 	go func() {

@@ -28,8 +28,8 @@ import (
 
 var log = logging.GetLogger("e2", "v1beta1")
 
-// NewSubscriptionService creates a new E2T subscription service
-func NewSubscriptionService() northbound.Service {
+// NewProxyService creates a new E2T control and subscription proxy service
+func NewProxyService() northbound.Service {
 	return &SubscriptionService{}
 }
 
@@ -40,28 +40,43 @@ type SubscriptionService struct {
 
 // Register registers the SubscriptionService with the gRPC server.
 func (s SubscriptionService) Register(r *grpc.Server) {
-	server := &SubscriptionServer{}
+	server := &ProxyServer{}
 	e2api.RegisterSubscriptionServiceServer(r, server)
+	e2api.RegisterControlServiceServer(r, server)
 }
 
-// SubscriptionServer implements the gRPC service for E2 Subscription related functions.
-type SubscriptionServer struct {
+// ProxyServer implements the gRPC service for E2 Subscription related functions.
+type ProxyServer struct {
 	conn *grpc.ClientConn
 }
 
-func (s *SubscriptionServer) connect(ctx context.Context) (*grpc.ClientConn, error) {
-	clientCreds, _ := creds.GetClientCredentials()
-	conn, err := grpc.DialContext(ctx, fmt.Sprintf("%s:///%s", resolverName, "onos-e2t:5150"),
-		grpc.WithTransportCredentials(credentials.NewTLS(clientCreds)),
-		grpc.WithUnaryInterceptor(retry.RetryingUnaryClientInterceptor()),
-		grpc.WithStreamInterceptor(retry.RetryingStreamClientInterceptor()))
+func (s *ProxyServer) connect(ctx context.Context) (*grpc.ClientConn, error) {
+	if s.conn == nil {
+		clientCreds, _ := creds.GetClientCredentials()
+		conn, err := grpc.DialContext(ctx, fmt.Sprintf("%s:///%s", resolverName, "onos-e2t:5150"),
+			grpc.WithTransportCredentials(credentials.NewTLS(clientCreds)),
+			grpc.WithUnaryInterceptor(retry.RetryingUnaryClientInterceptor()),
+			grpc.WithStreamInterceptor(retry.RetryingStreamClientInterceptor()))
+		if err != nil {
+			return nil, err
+		}
+		s.conn = conn
+	}
+	return s.conn, nil
+}
+
+func (s *ProxyServer) Control(ctx context.Context, request *e2api.ControlRequest) (*e2api.ControlResponse, error) {
+	log.Infof("Received E2 Control Request %+v", request)
+	conn, err := s.connect(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return conn, nil
+
+	client := e2api.NewControlServiceClient(conn)
+	return client.Control(ctx, request)
 }
 
-func (s *SubscriptionServer) Subscribe(request *e2api.SubscribeRequest, server e2api.SubscriptionService_SubscribeServer) error {
+func (s *ProxyServer) Subscribe(request *e2api.SubscribeRequest, server e2api.SubscriptionService_SubscribeServer) error {
 	log.Infof("Received SubscribeRequest %+v", request)
 	var err error
 
@@ -88,7 +103,7 @@ func (s *SubscriptionServer) Subscribe(request *e2api.SubscribeRequest, server e
 	}
 }
 
-func (s *SubscriptionServer) Unsubscribe(ctx context.Context, request *e2api.UnsubscribeRequest) (*e2api.UnsubscribeResponse, error) {
+func (s *ProxyServer) Unsubscribe(ctx context.Context, request *e2api.UnsubscribeRequest) (*e2api.UnsubscribeResponse, error) {
 	log.Infof("Received UnsubscribeRequest %+v", request)
 	var err error
 
