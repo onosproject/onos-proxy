@@ -26,7 +26,7 @@ import (
 	"google.golang.org/grpc/serviceconfig"
 )
 
-const resolverName = "e2"
+const ResolverName = "e2"
 const topoAddress = "onos-topo:5150"
 
 // ResolverBuilder :
@@ -35,7 +35,7 @@ type ResolverBuilder struct {
 
 // Scheme :
 func (b *ResolverBuilder) Scheme() string {
-	return resolverName
+	return ResolverName
 }
 
 // Build :
@@ -59,7 +59,7 @@ func (b *ResolverBuilder) Build(target resolver.Target, cc resolver.ClientConn, 
 	}
 
 	serviceConfig := cc.ParseServiceConfig(
-		fmt.Sprintf(`{"loadBalancingConfig":[{"%s":{}}]}`, resolverName),
+		fmt.Sprintf(`{"loadBalancingConfig":[{"%s":{}}]}`, ResolverName),
 	)
 
 	log.Infof("Built new resolver")

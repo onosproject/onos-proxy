@@ -15,9 +15,15 @@
 package manager
 
 import (
+	"context"
+	"fmt"
+	"github.com/onosproject/onos-lib-go/pkg/grpc/retry"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-lib-go/pkg/northbound"
 	e2v1beta1service "github.com/onosproject/onos-proxy/pkg/e2/v1beta1"
+	"github.com/onosproject/onos-proxy/pkg/utils/creds"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 var log = logging.GetLogger("manager")
@@ -70,9 +76,15 @@ func (m *Manager) startNorthboundServer() error {
 		Insecure:    true,
 		SecurityCfg: &northbound.SecurityConfig{},
 	})
+
+	conn, err := m.connect(context.Background())
+	if err != nil {
+		log.Errorf("Unable to connect to E2T service")
+		return err
+	}
+
 	s.AddService(logging.Service{})
-	s.AddService(e2v1beta1service.NewControlService())
-	s.AddService(e2v1beta1service.NewSubscriptionService())
+	s.AddService(e2v1beta1service.NewProxyService(conn))
 
 	doneCh := make(chan error)
 	go func() {
@@ -85,6 +97,18 @@ func (m *Manager) startNorthboundServer() error {
 		}
 	}()
 	return <-doneCh
+}
+
+func (m *Manager) connect(ctx context.Context) (*grpc.ClientConn, error) {
+	clientCreds, _ := creds.GetClientCredentials()
+	conn, err := grpc.DialContext(ctx, fmt.Sprintf("%s:///%s", e2v1beta1service.ResolverName, "onos-e2t:5150"),
+		grpc.WithTransportCredentials(credentials.NewTLS(clientCreds)),
+		grpc.WithUnaryInterceptor(retry.RetryingUnaryClientInterceptor()),
+		grpc.WithStreamInterceptor(retry.RetryingStreamClientInterceptor()))
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
 }
 
 // Close kills the connections and manager related objects
