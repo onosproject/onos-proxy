@@ -20,6 +20,7 @@ import (
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-lib-go/pkg/northbound"
 	"google.golang.org/grpc"
+	"io"
 )
 
 var log = logging.GetLogger("e2", "v1beta1")
@@ -67,6 +68,9 @@ func (s *ProxyServer) Subscribe(request *e2api.SubscribeRequest, server e2api.Su
 
 	for {
 		response, err := clientStream.Recv()
+		if err == io.EOF {
+			return nil
+		}
 		if err != nil {
 			return err
 		}

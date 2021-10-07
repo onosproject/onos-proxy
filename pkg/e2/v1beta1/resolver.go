@@ -192,7 +192,7 @@ func (r *Resolver) updateState() {
 				nodes,
 			),
 		})
-		log.Infof("New resolver address: %s => %+v", addr, nodes)
+		log.Debugf("New resolver address: %s => %+v", addr, nodes)
 	}
 
 	log.Infof("New resolver addresses: %+v", addresses)
