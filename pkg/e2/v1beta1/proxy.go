@@ -23,7 +23,7 @@ import (
 	"io"
 )
 
-var log = logging.GetLogger("e2", "v1beta1")
+var log = logging.GetLogger("onos", "proxy", "e2", "v1beta1")
 
 // NewProxyService creates a new E2T control and subscription proxy service
 func NewProxyService(clientConn *grpc.ClientConn) northbound.Service {
@@ -53,16 +53,23 @@ type ProxyServer struct {
 }
 
 func (s *ProxyServer) Control(ctx context.Context, request *e2api.ControlRequest) (*e2api.ControlResponse, error) {
-	log.Infof("Received E2 Control Request %+v", request)
+	log.Debugf("ControlRequest %+v", request)
 	client := e2api.NewControlServiceClient(s.conn)
-	return client.Control(ctx, request)
+	response, err := client.Control(ctx, request)
+	if err != nil {
+		log.Warnf("ControlRequest %+v error: %s", request, err)
+		return nil, err
+	}
+	log.Debugf("ControlResponse %+v", response)
+	return response, nil
 }
 
 func (s *ProxyServer) Subscribe(request *e2api.SubscribeRequest, server e2api.SubscriptionService_SubscribeServer) error {
-	log.Infof("Received SubscribeRequest %+v", request)
+	log.Debugf("SubscribeRequest %+v", request)
 	client := e2api.NewSubscriptionServiceClient(s.conn)
 	clientStream, err := client.Subscribe(server.Context(), request)
 	if err != nil {
+		log.Warnf("SubscribeRequest %+v error: %s", request, err)
 		return err
 	}
 
@@ -72,17 +79,26 @@ func (s *ProxyServer) Subscribe(request *e2api.SubscribeRequest, server e2api.Su
 			return nil
 		}
 		if err != nil {
+			log.Warnf("SubscribeRequest %+v error: %s", request, err)
 			return err
 		}
+		log.Debugf("SubscribeResponse %+v", response)
 		err = server.Send(response)
 		if err != nil {
+			log.Warnf("SubscribeResponse %+v error: %s", response, err)
 			return err
 		}
 	}
 }
 
 func (s *ProxyServer) Unsubscribe(ctx context.Context, request *e2api.UnsubscribeRequest) (*e2api.UnsubscribeResponse, error) {
-	log.Infof("Received UnsubscribeRequest %+v", request)
+	log.Debugf("UnsubscribeRequest %+v", request)
 	client := e2api.NewSubscriptionServiceClient(s.conn)
-	return client.Unsubscribe(ctx, request)
+	response, err := client.Unsubscribe(ctx, request)
+	if err != nil {
+		log.Warnf("UnsubscribeRequest %+v error: %s", request, err)
+		return nil, err
+	}
+	log.Debugf("UnsubscribeResponse %+v", response)
+	return response, nil
 }

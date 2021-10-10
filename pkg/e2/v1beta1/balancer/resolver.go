@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v1beta1
+package balancer
 
 import (
 	"context"
 	"fmt"
 	"github.com/onosproject/onos-api/go/onos/topo"
 	"github.com/onosproject/onos-lib-go/pkg/grpc/retry"
+	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/attributes"
 	"google.golang.org/grpc/codes"
@@ -26,12 +27,17 @@ import (
 	"google.golang.org/grpc/serviceconfig"
 )
 
+var log = logging.GetLogger("onos", "proxy", "e2", "v1beta1", "balancer")
+
 const ResolverName = "e2"
 const topoAddress = "onos-topo:5150"
 
-// ResolverBuilder :
-type ResolverBuilder struct {
+func init() {
+	resolver.Register(&ResolverBuilder{})
 }
+
+// ResolverBuilder :
+type ResolverBuilder struct{}
 
 // Scheme :
 func (b *ResolverBuilder) Scheme() string {
@@ -49,8 +55,8 @@ func (b *ResolverBuilder) Build(target resolver.Target, cc resolver.ClientConn, 
 	} else {
 		dialOpts = append(dialOpts, grpc.WithInsecure())
 	}
-	dialOpts = append(dialOpts, grpc.WithUnaryInterceptor(retry.RetryingUnaryClientInterceptor(retry.WithRetryOn(codes.Unavailable, codes.Unknown))))
-	dialOpts = append(dialOpts, grpc.WithStreamInterceptor(retry.RetryingStreamClientInterceptor(retry.WithRetryOn(codes.Unavailable, codes.Unknown))))
+	dialOpts = append(dialOpts, grpc.WithUnaryInterceptor(retry.RetryingUnaryClientInterceptor(retry.WithRetryOn(codes.Unavailable))))
+	dialOpts = append(dialOpts, grpc.WithStreamInterceptor(retry.RetryingStreamClientInterceptor(retry.WithRetryOn(codes.Unavailable))))
 	dialOpts = append(dialOpts, grpc.WithContextDialer(opts.Dialer))
 
 	topoConn, err := grpc.Dial(topoAddress, dialOpts...)
@@ -68,9 +74,9 @@ func (b *ResolverBuilder) Build(target resolver.Target, cc resolver.ClientConn, 
 		clientConn:    cc,
 		topoConn:      topoConn,
 		serviceConfig: serviceConfig,
-		nodes:         make(map[topo.ID]*topo.MastershipState),
+		masterships:   make(map[topo.ID]topo.MastershipState),
 		controls:      make(map[topo.ID]topo.ID),
-		e2ts:          make(map[topo.ID]string),
+		addresses:     make(map[topo.ID]string),
 	}
 	err = resolver.start()
 	if err != nil {
@@ -86,9 +92,9 @@ type Resolver struct {
 	clientConn    resolver.ClientConn
 	topoConn      *grpc.ClientConn
 	serviceConfig *serviceconfig.ParseResult
-	nodes         map[topo.ID]*topo.MastershipState // E2 node to mastership (controls relation ID)
-	controls      map[topo.ID]topo.ID               // controls relation to E2T ID
-	e2ts          map[topo.ID]string                // E2T ID to address
+	masterships   map[topo.ID]topo.MastershipState // E2 node to mastership (controls relation ID)
+	controls      map[topo.ID]topo.ID              // controls relation to E2T ID
+	addresses     map[topo.ID]string               // E2T ID to address
 }
 
 func (r *Resolver) start() error {
@@ -118,37 +124,35 @@ func (r *Resolver) handleEvent(event topo.Event) {
 		// Track changes in E2 nodes
 		switch event.Type {
 		case topo.EventType_REMOVED:
-			delete(r.nodes, object.ID)
+			delete(r.masterships, object.ID)
 		default:
-			var m topo.MastershipState
-			_ = object.GetAspect(&m)
-			if node, ok := r.nodes[object.ID]; !ok || m.Term > node.Term {
-				r.nodes[object.ID] = &m
+			var mastership topo.MastershipState
+			_ = object.GetAspect(&mastership)
+			if mastership.Term > r.masterships[object.ID].Term {
+				r.masterships[object.ID] = mastership
 			}
 		}
 		r.updateState()
-
 	} else if entity, ok := object.Obj.(*topo.Object_Entity); ok && entity.Entity.KindID == topo.E2T {
 		// Track changes in E2T instances
 		switch event.Type {
 		case topo.EventType_REMOVED:
-			delete(r.e2ts, object.ID)
+			delete(r.addresses, object.ID)
 			r.updateState()
 		default:
 			var info topo.E2TInfo
 			_ = object.GetAspect(&info)
-			newAddress := r.e2ts[object.ID]
 			for _, iface := range info.Interfaces {
 				if iface.Type == topo.Interface_INTERFACE_E2T {
-					newAddress = fmt.Sprintf("%s:%d", iface.IP, iface.Port)
+					address := fmt.Sprintf("%s:%d", iface.IP, iface.Port)
+					if r.addresses[object.ID] != address {
+						r.addresses[object.ID] = address
+						r.updateState()
+						break
+					}
 				}
 			}
-			if r.e2ts[object.ID] != newAddress {
-				r.e2ts[object.ID] = newAddress
-				r.updateState()
-			}
 		}
-
 	} else if relation, ok := object.Obj.(*topo.Object_Relation); ok && relation.Relation.KindID == topo.CONTROLS {
 		// Track changes in E2T/E2Node controls relations
 		switch event.Type {
@@ -164,35 +168,28 @@ func (r *Resolver) handleEvent(event topo.Event) {
 func (r *Resolver) updateState() {
 	// Produce list of addresses for available E2T instances
 	// Annotate each address with a list of nodes for which this instances is presently the master
-	e2tMastership := make(map[topo.ID][]string)
+	e2tE2Nodes := make(map[topo.ID][]string)
 
 	// Scan over all nodes and insert their ID into the list of nodes of its master E2T instance
-	for nodeID, mastership := range r.nodes {
+	for nodeID, mastership := range r.masterships {
 		if e2tID, ok := r.controls[topo.ID(mastership.NodeId)]; ok {
-			var nodes []string
-			if nodes, ok = e2tMastership[e2tID]; !ok {
-				nodes = make([]string, 0)
-			}
-			e2tMastership[e2tID] = append(nodes, string(nodeID))
+			e2tE2Nodes[e2tID] = append(e2tE2Nodes[e2tID], string(nodeID))
 		}
 	}
 
 	// Transpose the map of E2T node IDs into a list of addresses with nodes attribute
-	addresses := make([]resolver.Address, 0, len(r.e2ts))
-	for e2tID, addr := range r.e2ts {
-		var nodes []string
-		var ok bool
-		if nodes, ok = e2tMastership[e2tID]; !ok {
-			nodes = make([]string, 0)
+	addresses := make([]resolver.Address, 0, len(r.addresses))
+	for e2tID, addr := range r.addresses {
+		if nodes, ok := e2tE2Nodes[e2tID]; ok {
+			addresses = append(addresses, resolver.Address{
+				Addr: addr,
+				Attributes: attributes.New(
+					"nodes",
+					nodes,
+				),
+			})
+			log.Debugf("New resolver address: %s => %+v", addr, nodes)
 		}
-		addresses = append(addresses, resolver.Address{
-			Addr: addr,
-			Attributes: attributes.New(
-				"nodes",
-				nodes,
-			),
-		})
-		log.Debugf("New resolver address: %s => %+v", addr, nodes)
 	}
 
 	log.Infof("New resolver addresses: %+v", addresses)

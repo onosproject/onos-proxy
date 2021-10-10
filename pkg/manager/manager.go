@@ -21,12 +21,14 @@ import (
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-lib-go/pkg/northbound"
 	e2v1beta1service "github.com/onosproject/onos-proxy/pkg/e2/v1beta1"
+	"github.com/onosproject/onos-proxy/pkg/e2/v1beta1/balancer"
 	"github.com/onosproject/onos-proxy/pkg/utils/creds"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 )
 
-var log = logging.GetLogger("manager")
+var log = logging.GetLogger("onos", "proxy", "manager")
 
 // Config is a manager configuration
 type Config struct {
@@ -101,10 +103,10 @@ func (m *Manager) startNorthboundServer() error {
 
 func (m *Manager) connect(ctx context.Context) (*grpc.ClientConn, error) {
 	clientCreds, _ := creds.GetClientCredentials()
-	conn, err := grpc.DialContext(ctx, fmt.Sprintf("%s:///%s", e2v1beta1service.ResolverName, "onos-e2t:5150"),
+	conn, err := grpc.DialContext(ctx, fmt.Sprintf("%s:///%s", balancer.ResolverName, "onos-e2t:5150"),
 		grpc.WithTransportCredentials(credentials.NewTLS(clientCreds)),
-		grpc.WithUnaryInterceptor(retry.RetryingUnaryClientInterceptor()),
-		grpc.WithStreamInterceptor(retry.RetryingStreamClientInterceptor()))
+		grpc.WithUnaryInterceptor(retry.RetryingUnaryClientInterceptor(retry.WithRetryOn(codes.Unavailable))),
+		grpc.WithStreamInterceptor(retry.RetryingStreamClientInterceptor(retry.WithRetryOn(codes.Unavailable))))
 	if err != nil {
 		return nil, err
 	}
