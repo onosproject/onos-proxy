@@ -12,20 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v1beta1
+package balancer
 
 import (
 	"google.golang.org/grpc/balancer"
 	"google.golang.org/grpc/balancer/base"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/resolver"
 )
 
 const e2NodeIDHeader = "e2-node-id"
 
 func init() {
 	balancer.Register(base.NewBalancerBuilder(ResolverName, &PickerBuilder{}, base.Config{}))
-	resolver.Register(&ResolverBuilder{})
 }
 
 // PickerBuilder :
@@ -61,7 +59,7 @@ func (p *Picker) Pick(info balancer.PickInfo) (balancer.PickResult, error) {
 		ids := md.Get(e2NodeIDHeader)
 		if len(ids) > 0 {
 			if subConn, ok := p.masters[ids[0]]; ok {
-				log.Infof("Picked subconn for %s: %+v", ids[0], subConn)
+				log.Debugf("Picked subconn for %s: %+v", ids[0], subConn)
 				result.SubConn = subConn
 				return result, nil
 			}
