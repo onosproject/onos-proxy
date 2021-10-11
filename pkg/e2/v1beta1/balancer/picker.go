@@ -55,7 +55,7 @@ type Picker struct {
 // Pick :
 func (p *Picker) Pick(info balancer.PickInfo) (balancer.PickResult, error) {
 	var result balancer.PickResult
-	if md, ok := metadata.FromIncomingContext(info.Ctx); ok {
+	if md, ok := metadata.FromOutgoingContext(info.Ctx); ok {
 		ids := md.Get(e2NodeIDHeader)
 		if len(ids) > 0 {
 			if subConn, ok := p.masters[ids[0]]; ok {
