@@ -20,10 +20,13 @@ import (
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-lib-go/pkg/northbound"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"io"
 )
 
 var log = logging.GetLogger("onos", "proxy", "e2", "v1beta1")
+
+const e2NodeIDHeader = "e2-node-id"
 
 // NewProxyService creates a new E2T control and subscription proxy service
 func NewProxyService(clientConn *grpc.ClientConn) northbound.Service {
@@ -55,6 +58,7 @@ type ProxyServer struct {
 func (s *ProxyServer) Control(ctx context.Context, request *e2api.ControlRequest) (*e2api.ControlResponse, error) {
 	log.Debugf("ControlRequest %+v", request)
 	client := e2api.NewControlServiceClient(s.conn)
+	ctx = metadata.AppendToOutgoingContext(ctx, e2NodeIDHeader, string(request.Headers.E2NodeID))
 	response, err := client.Control(ctx, request)
 	if err != nil {
 		log.Warnf("ControlRequest %+v error: %s", request, err)
@@ -67,7 +71,8 @@ func (s *ProxyServer) Control(ctx context.Context, request *e2api.ControlRequest
 func (s *ProxyServer) Subscribe(request *e2api.SubscribeRequest, server e2api.SubscriptionService_SubscribeServer) error {
 	log.Debugf("SubscribeRequest %+v", request)
 	client := e2api.NewSubscriptionServiceClient(s.conn)
-	clientStream, err := client.Subscribe(server.Context(), request)
+	ctx := metadata.AppendToOutgoingContext(server.Context(), e2NodeIDHeader, string(request.Headers.E2NodeID))
+	clientStream, err := client.Subscribe(ctx, request)
 	if err != nil {
 		log.Warnf("SubscribeRequest %+v error: %s", request, err)
 		return err
@@ -94,6 +99,7 @@ func (s *ProxyServer) Subscribe(request *e2api.SubscribeRequest, server e2api.Su
 func (s *ProxyServer) Unsubscribe(ctx context.Context, request *e2api.UnsubscribeRequest) (*e2api.UnsubscribeResponse, error) {
 	log.Debugf("UnsubscribeRequest %+v", request)
 	client := e2api.NewSubscriptionServiceClient(s.conn)
+	ctx = metadata.AppendToOutgoingContext(ctx, e2NodeIDHeader, string(request.Headers.E2NodeID))
 	response, err := client.Unsubscribe(ctx, request)
 	if err != nil {
 		log.Warnf("UnsubscribeRequest %+v error: %s", request, err)
