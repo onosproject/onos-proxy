@@ -36,6 +36,7 @@ func (p *PickerBuilder) Build(info base.PickerBuildInfo) balancer.Picker {
 	for sc, scInfo := range info.ReadySCs {
 		nodes := scInfo.Address.Attributes.Value("nodes").([]string)
 		for _, node := range nodes {
+			log.Debugf("E2 node %s is mastered by E2T %s; conn=%+v", node, scInfo.Address.Addr, sc)
 			masters[node] = sc
 		}
 	}
