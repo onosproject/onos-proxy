@@ -10,8 +10,8 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0 // indirect
 	github.com/magiconair/properties v1.8.4 // indirect
 	github.com/mitchellh/mapstructure v1.3.3 // indirect
-	github.com/onosproject/onos-api/go v0.7.95
-	github.com/onosproject/onos-lib-go v0.7.21
+	github.com/onosproject/onos-api/go v0.7.110
+	github.com/onosproject/onos-lib-go v0.7.22
 	github.com/pelletier/go-toml v1.8.1 // indirect
 	github.com/smartystreets/assertions v1.2.0 // indirect
 	github.com/spf13/afero v1.4.1 // indirect
