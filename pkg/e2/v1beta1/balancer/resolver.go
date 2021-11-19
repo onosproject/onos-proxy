@@ -195,7 +195,8 @@ func (r *Resolver) updateState() {
 	log.Infof("New resolver addresses: %+v", addresses)
 
 	// Update the resolver state with list of E2T addresses annotated by nodes for which they are masters
-	r.clientConn.UpdateState(resolver.State{
+	// TODO - this call sometimes returns an error in the 1.41 version of grpc. Need to figure out why
+	_ = r.clientConn.UpdateState(resolver.State{
 		Addresses:     addresses,
 		ServiceConfig: r.serviceConfig,
 	})
