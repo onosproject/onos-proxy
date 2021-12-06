@@ -1,5 +1,6 @@
 vendor
 build/_output/*
+build/build-tools
 *.DS_Store
 coverage.txt
 *.coverprofile
