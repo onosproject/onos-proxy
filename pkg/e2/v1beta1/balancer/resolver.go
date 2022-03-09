@@ -17,6 +17,7 @@ package balancer
 import (
 	"context"
 	"fmt"
+
 	"github.com/onosproject/onos-api/go/onos/topo"
 	"github.com/onosproject/onos-lib-go/pkg/grpc/retry"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
@@ -27,7 +28,7 @@ import (
 	"google.golang.org/grpc/serviceconfig"
 )
 
-var log = logging.GetLogger("onos", "proxy", "e2", "v1beta1", "balancer")
+var log = logging.GetLogger()
 
 const ResolverName = "e2"
 const topoAddress = "onos-topo:5150"

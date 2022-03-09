@@ -17,15 +17,16 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/onosproject/onos-lib-go/pkg/logging"
-	"github.com/onosproject/onos-proxy/pkg/manager"
 	"os"
 	"os/signal"
 	"runtime"
 	"syscall"
+
+	"github.com/onosproject/onos-lib-go/pkg/logging"
+	"github.com/onosproject/onos-proxy/pkg/manager"
 )
 
-var log = logging.GetLogger("onos", "proxy")
+var log = logging.GetLogger()
 
 func printVersion() {
 	log.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))

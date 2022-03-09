@@ -17,6 +17,7 @@ package manager
 import (
 	"context"
 	"fmt"
+
 	"github.com/onosproject/onos-lib-go/pkg/grpc/retry"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-lib-go/pkg/northbound"
@@ -28,7 +29,7 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-var log = logging.GetLogger("onos", "proxy", "manager")
+var log = logging.GetLogger()
 
 // Config is a manager configuration
 type Config struct {
