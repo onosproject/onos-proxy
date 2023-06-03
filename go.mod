@@ -1,6 +1,6 @@
 module github.com/onosproject/onos-proxy
 
-go 1.16
+go 1.18
 
 require (
 	github.com/onosproject/onos-api/go v0.8.7
