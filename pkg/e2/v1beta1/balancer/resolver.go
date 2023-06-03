@@ -159,7 +159,7 @@ func (r *Resolver) handleEvent(event topo.Event) {
 func (r *Resolver) updateState() {
 	// Produce list of addresses for available E2T instances
 	// Annotate each address with a list of nodes for which this instances is presently the master
-	e2tE2Nodes := make(map[topo.ID][]string)
+	e2tE2Nodes := make(map[topo.ID]nodeList)
 
 	// Scan over all nodes and insert their ID into the list of nodes of its master E2T instance
 	for nodeID, mastership := range r.masterships {
@@ -204,3 +204,20 @@ func (r *Resolver) Close() {
 }
 
 var _ resolver.Resolver = (*Resolver)(nil)
+
+type nodeList []string
+
+func (l nodeList) Equal(o interface{}) bool {
+	if nl, ok := o.(nodeList); ok {
+		if len(l) != len(nl) {
+			return false
+		}
+		for i := 0; i < len(l); i++ {
+			if l[i] != nl[i] {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
