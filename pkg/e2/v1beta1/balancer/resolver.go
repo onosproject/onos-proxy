@@ -7,6 +7,7 @@ package balancer
 import (
 	"context"
 	"fmt"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/onosproject/onos-api/go/onos/topo"
 	"github.com/onosproject/onos-lib-go/pkg/grpc/retry"
@@ -36,7 +37,7 @@ func (b *ResolverBuilder) Scheme() string {
 }
 
 // Build :
-func (b *ResolverBuilder) Build(target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOptions) (resolver.Resolver, error) {
+func (b *ResolverBuilder) Build(_ resolver.Target, cc resolver.ClientConn, opts resolver.BuildOptions) (resolver.Resolver, error) {
 	var dialOpts []grpc.DialOption
 	if opts.DialCreds != nil {
 		dialOpts = append(
@@ -44,7 +45,7 @@ func (b *ResolverBuilder) Build(target resolver.Target, cc resolver.ClientConn, 
 			grpc.WithTransportCredentials(opts.DialCreds),
 		)
 	} else {
-		dialOpts = append(dialOpts, grpc.WithInsecure())
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 	dialOpts = append(dialOpts, grpc.WithUnaryInterceptor(retry.RetryingUnaryClientInterceptor(retry.WithRetryOn(codes.Unavailable))))
 	dialOpts = append(dialOpts, grpc.WithStreamInterceptor(retry.RetryingStreamClientInterceptor(retry.WithRetryOn(codes.Unavailable))))
