@@ -7,6 +7,7 @@ package balancer
 import (
 	"context"
 	"fmt"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/onosproject/onos-api/go/onos/topo"
 	"github.com/onosproject/onos-lib-go/pkg/grpc/retry"
@@ -36,7 +37,7 @@ func (b *ResolverBuilder) Scheme() string {
 }
 
 // Build :
-func (b *ResolverBuilder) Build(target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOptions) (resolver.Resolver, error) {
+func (b *ResolverBuilder) Build(_ resolver.Target, cc resolver.ClientConn, opts resolver.BuildOptions) (resolver.Resolver, error) {
 	var dialOpts []grpc.DialOption
 	if opts.DialCreds != nil {
 		dialOpts = append(
@@ -44,7 +45,7 @@ func (b *ResolverBuilder) Build(target resolver.Target, cc resolver.ClientConn, 
 			grpc.WithTransportCredentials(opts.DialCreds),
 		)
 	} else {
-		dialOpts = append(dialOpts, grpc.WithInsecure())
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 	dialOpts = append(dialOpts, grpc.WithUnaryInterceptor(retry.RetryingUnaryClientInterceptor(retry.WithRetryOn(codes.Unavailable))))
 	dialOpts = append(dialOpts, grpc.WithStreamInterceptor(retry.RetryingStreamClientInterceptor(retry.WithRetryOn(codes.Unavailable))))
@@ -159,7 +160,7 @@ func (r *Resolver) handleEvent(event topo.Event) {
 func (r *Resolver) updateState() {
 	// Produce list of addresses for available E2T instances
 	// Annotate each address with a list of nodes for which this instances is presently the master
-	e2tE2Nodes := make(map[topo.ID][]string)
+	e2tE2Nodes := make(map[topo.ID]nodeList)
 
 	// Scan over all nodes and insert their ID into the list of nodes of its master E2T instance
 	for nodeID, mastership := range r.masterships {
@@ -204,3 +205,20 @@ func (r *Resolver) Close() {
 }
 
 var _ resolver.Resolver = (*Resolver)(nil)
+
+type nodeList []string
+
+func (l nodeList) Equal(o interface{}) bool {
+	if nl, ok := o.(nodeList); ok {
+		if len(l) != len(nl) {
+			return false
+		}
+		for i := 0; i < len(l); i++ {
+			if l[i] != nl[i] {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
