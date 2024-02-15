@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/onosproject/onos-api/go v0.8.7
 	github.com/onosproject/onos-lib-go v0.10.21
-	github.com/stretchr/testify v1.7.1
+	github.com/stretchr/testify v1.8.4
 	google.golang.org/grpc v1.46.0
 )
 
@@ -64,6 +64,5 @@ require (
 	gopkg.in/square/go-jose.v1 v1.1.2 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
