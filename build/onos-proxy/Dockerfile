@@ -8,7 +8,7 @@ ENV GO111MODULE=on
 COPY . /go/src/github.com/onosproject/onos-proxy
 RUN cd /go/src/github.com/onosproject/onos-proxy && GOFLAGS=-mod=vendor make build
 
-FROM alpine:3.11
+FROM alpine:3.19
 RUN apk add libc6-compat
 
 USER nobody
