@@ -3,11 +3,11 @@ module github.com/onosproject/onos-proxy
 go 1.18
 
 require (
+<<<<<<< HEAD
 	github.com/onosproject/onos-api/go v0.10.32
 	github.com/onosproject/onos-lib-go v0.10.25
 	github.com/stretchr/testify v1.8.2
-	google.golang.org/grpc v1.54.0
-)
+	google.golang.org/grpc v1.54.0)
 
 require (
 	github.com/Shopify/sarama v1.31.1 // indirect
