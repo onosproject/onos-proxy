@@ -3,7 +3,7 @@ module github.com/onosproject/onos-proxy
 go 1.18
 
 require (
-	github.com/onosproject/onos-api/go v0.8.7
+	github.com/onosproject/onos-api/go v0.10.34
 	github.com/onosproject/onos-lib-go v0.10.21
 	github.com/stretchr/testify v1.9.0
 	google.golang.org/grpc v1.65.0
@@ -58,6 +58,14 @@ require (
 	golang.org/x/text v0.15.0 // indirect
 	google.golang.org/genproto v0.0.0-20220407144326-9054f6ed7bac // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
+	golang.org/x/crypto v0.21.0 // indirect
+	golang.org/x/net v0.22.0 // indirect
+	golang.org/x/oauth2 v0.18.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
+	google.golang.org/appengine v1.6.8 // indirect
+	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect
 	gopkg.in/square/go-jose.v1 v1.1.2 // indirect
