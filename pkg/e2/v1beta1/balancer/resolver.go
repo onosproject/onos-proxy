@@ -51,6 +51,7 @@ func (b *ResolverBuilder) Build(_ resolver.Target, cc resolver.ClientConn, opts 
 	dialOpts = append(dialOpts, grpc.WithStreamInterceptor(retry.RetryingStreamClientInterceptor(retry.WithRetryOn(codes.Unavailable))))
 	dialOpts = append(dialOpts, grpc.WithContextDialer(opts.Dialer))
 
+	// nolint:staticcheck
 	topoConn, err := grpc.Dial(topoAddress, dialOpts...)
 	if err != nil {
 		return nil, err
