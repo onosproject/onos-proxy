@@ -9,7 +9,7 @@ export GO111MODULE=on
 
 ONOS_PROXY_VERSION ?= latest
 
-GOLANG_CI_VERSION := v1.52.2
+GOLANG_CI_VERSION := v1.57.1
 
 all: build docker-build
 

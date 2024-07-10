@@ -94,6 +94,7 @@ func (m *Manager) startNorthboundServer() error {
 
 func (m *Manager) connect(ctx context.Context) (*grpc.ClientConn, error) {
 	clientCreds, _ := creds.GetClientCredentials()
+	// nolint:staticcheck
 	conn, err := grpc.DialContext(ctx, fmt.Sprintf("%s:///%s", balancer.ResolverName, "onos-e2t:5150"),
 		grpc.WithTransportCredentials(credentials.NewTLS(clientCreds)),
 		grpc.WithUnaryInterceptor(retry.RetryingUnaryClientInterceptor(retry.WithRetryOn(codes.Unavailable))),
